@@ -30,11 +30,7 @@ app.use(express.static(path.join(__dirname, 'dist'), {
 
 function getCodexPath() {
   if (process.env.CAM_CODEX_EXE) return process.env.CAM_CODEX_EXE;
-  if (process.platform === 'win32') {
-    const candidate = path.join(os.homedir(), 'AppData', 'Local', 'OpenAI', 'Codex', 'bin', 'codex.exe');
-    return candidate;
-  }
-  return 'codex';
+  return path.join(os.homedir(), 'AppData', 'Local', 'OpenAI', 'Codex', 'bin', 'codex.exe');
 }
 
 function decodeJwt(token) {
@@ -631,67 +627,79 @@ app.get('/api/sessions/read', async (req, res) => {
 });
 
 let cachedModels = null;
+let modelsPromise = null;
 
 // API: Get available models from codex CLI
-app.get('/api/models', (req, res) => {
+app.get('/api/models', async (req, res) => {
   if (cachedModels) {
     return res.json(cachedModels);
   }
 
-  const codexPath = getCodexPath();
-  console.log(`Spawning ${codexPath} debug models...`);
-  const proc = spawn(codexPath, ['debug', 'models'], { shell: false, windowsHide: true });
-  let stdout = '';
-  let stderr = '';
-
-  proc.stdout.on('data', (d) => { stdout += d.toString(); });
-  proc.stderr.on('data', (d) => { stderr += d.toString(); });
-
-  proc.on('close', (code) => {
-    if (code !== 0) {
-      console.warn(`[Server] codex debug models failed with code ${code}. Stderr: ${stderr}`);
-      const fallback = [
-        { slug: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
-        { slug: "gpt-5.5", display_name: "gpt-5.5" },
-        { slug: "gpt-5.4", display_name: "gpt-5.4" },
-        { slug: "gpt-5.3-codex-spark", display_name: "gpt-5.3-codex-spark" },
-        { slug: "gpt-5.3-codex", display_name: "gpt-5.3-codex" },
-        { slug: "gpt-5.2", display_name: "gpt-5.2" }
-      ];
-      return res.json(fallback);
-    }
-
+  if (modelsPromise) {
     try {
-      const sanitized = stdout.replace(/^\uFEFF/, '').trim();
-      const parsed = JSON.parse(sanitized);
-      cachedModels = parsed.models || [];
-      res.json(cachedModels);
+      const models = await modelsPromise;
+      return res.json(models);
     } catch (err) {
-      console.error('[Server] Failed to parse models JSON output:', err);
-      const fallback = [
-        { slug: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
-        { slug: "gpt-5.5", display_name: "gpt-5.5" },
-        { slug: "gpt-5.4", display_name: "gpt-5.4" },
-        { slug: "gpt-5.3-codex-spark", display_name: "gpt-5.3-codex-spark" },
-        { slug: "gpt-5.3-codex", display_name: "gpt-5.3-codex" },
-        { slug: "gpt-5.2", display_name: "gpt-5.2" }
-      ];
-      res.json(fallback);
+      // Return basic fallback if promise fails
+      return res.json([
+        { slug: "gpt-5.4-mini", display_name: "gpt-5.4-mini" }
+      ]);
     }
+  }
+
+  const fallback = [
+    { slug: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
+    { slug: "gpt-5.5", display_name: "gpt-5.5" },
+    { slug: "gpt-5.4", display_name: "gpt-5.4" },
+    { slug: "gpt-5.3-codex-spark", display_name: "gpt-5.3-codex-spark" },
+    { slug: "gpt-5.3-codex", display_name: "gpt-5.3-codex" },
+    { slug: "gpt-5.2", display_name: "gpt-5.2" }
+  ];
+
+  modelsPromise = new Promise((resolve) => {
+    const codexPath = getCodexPath();
+    console.log(`Spawning ${codexPath} debug models...`);
+    const proc = spawn(codexPath, ['debug', 'models'], { shell: false, windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        console.warn(`[Server] codex debug models failed with code ${code}. Stderr: ${stderr}`);
+        cachedModels = fallback;
+        resolve(fallback);
+        return;
+      }
+
+      try {
+        const sanitized = stdout.replace(/^\uFEFF/, '').trim();
+        const parsed = JSON.parse(sanitized);
+        cachedModels = parsed.models || fallback;
+        resolve(cachedModels);
+      } catch (err) {
+        console.error('[Server] Failed to parse models JSON output:', err);
+        cachedModels = fallback;
+        resolve(fallback);
+      }
+    });
+
+    proc.on('error', (err) => {
+      console.error('[Server] Failed to spawn codex debug models:', err);
+      cachedModels = fallback;
+      resolve(fallback);
+    });
   });
 
-  proc.on('error', (err) => {
-    console.error('[Server] Failed to spawn codex debug models:', err);
-    const fallback = [
-      { slug: "gpt-5.4-mini", display_name: "gpt-5.4-mini" },
-      { slug: "gpt-5.5", display_name: "gpt-5.5" },
-      { slug: "gpt-5.4", display_name: "gpt-5.4" },
-      { slug: "gpt-5.3-codex-spark", display_name: "gpt-5.3-codex-spark" },
-      { slug: "gpt-5.3-codex", display_name: "gpt-5.3-codex" },
-      { slug: "gpt-5.2", display_name: "gpt-5.2" }
-    ];
+  try {
+    const models = await modelsPromise;
+    res.json(models);
+  } catch (err) {
+    modelsPromise = null;
     res.json(fallback);
-  });
+  }
 });
 
 // API: Execute codex and stream JSONL via Server-Sent Events (SSE)
@@ -916,9 +924,4 @@ export async function startServer(port) {
       resolve(listenPort);
     });
   });
-}
-
-// When run directly (not imported), start immediately
-if (process.argv[1] && import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
-  startServer(PORT);
 }

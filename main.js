@@ -101,7 +101,6 @@ function getPathFromArgs(argv) {
 }
 
 async function registerContextMenu() {
-  if (process.platform !== 'win32') return;
   const execPath = process.execPath;
   if (execPath.toLowerCase().includes('node_modules') || execPath.toLowerCase().includes('electron.exe')) {
     console.log('[Electron Main] Skipping context menu registry in development mode.');
@@ -383,9 +382,7 @@ if (!gotTheLock) {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  app.quit();
 });
 
 app.on('will-quit', () => {
