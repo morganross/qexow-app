@@ -4,10 +4,10 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -30,9 +30,30 @@ jobs:
       - name: Build and Package
         run: npm run package:win
 
-      - name: Upload Windows Portable EXE
-        uses: actions/upload-artifact@v4
+      - name: Get Version
+        id: pkg
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: Qexow-Windows-Portable
-          path: dist_electron/Qexow *.exe
-          if-no-files-found: error
+          tag_name: v${{ steps.pkg.outputs.version }}
+          name: Qexow v${{ steps.pkg.outputs.version }}
+          body: |
+            ## Qexow v${{ steps.pkg.outputs.version }}
+
+            ### Download
+            Download the portable Windows executable below — no installation required, just run it.
+
+            ### What's New
+            - Parallel session background execution: switching chats no longer stops a running Codex agent
+            - Spinning loader in sidebar for background running sessions
+            - Real-time chat history sync when viewing an active background session
+            - Native OS window frame with File, View, and About menus
+            - Windows Explorer context menu integration ("Open in Qexow")
+            - Built-in CodeMirror 6 code editor with syntax highlighting
+          draft: false
+          prerelease: false
+          files: dist_electron/Qexow *.exe
+          make_latest: true
