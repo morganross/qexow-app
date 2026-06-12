@@ -285,16 +285,59 @@
 .editor-files-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  justify-content: space-between;
+  padding: 8px 16px;
   background: #0f0f13;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: #a1a1aa;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   user-select: none;
+}
+.editor-files-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.editor-files-header .current-path {
+  color: #cbd5e1;
+  text-transform: none;
+  font-family: inherit;
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editor-files-header .header-right-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.folder-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.folder-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.folder-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 .editor-files-list {
   flex: 1;
@@ -320,7 +363,12 @@
   background: rgba(255, 255, 255, 0.04);
   color: #e4e6f0;
 }
-.editor-file-item .file-icon {
+.editor-file-item.folder .folder-icon {
+  flex-shrink: 0;
+  color: #fbbf24;
+  opacity: 0.9;
+}
+.editor-file-item.file .file-icon {
   flex-shrink: 0;
   color: #3b82f6;
   opacity: 0.8;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Save, FileCode, CheckCircle, AlertCircle, Folder, FolderOpen } from 'lucide-react';
+import { X, Save, FileCode, CheckCircle, AlertCircle, Folder, FolderOpen, ArrowLeft, ArrowUp } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { html } from '@codemirror/lang-html';
@@ -79,8 +79,13 @@ function TabBar({ tabs, activeTabPath, onTabSelect, onTabClose }) {
 export default function EditorPane({ openFiles, activeFilePath, onTabSelect, onTabClose, onFileSave, onFileOpen, refreshTrigger }) {
   const [files, setFiles] = useState([]);
   const [workspaceRoot, setWorkspaceRoot] = useState('');
+  const [currentDir, setCurrentDir] = useState('');
+  const [dirHistory, setDirHistory] = useState([]);
 
   useEffect(() => {
+    setCurrentDir('');
+    setDirHistory([]);
+
     fetch('/api/workspaces')
       .then(res => res.json())
       .then(data => {
@@ -120,6 +125,63 @@ export default function EditorPane({ openFiles, activeFilePath, onTabSelect, onT
       }
     });
   }, [openFiles]);
+
+  // Normalise files to use '/' forward slashes
+  const normalisedFiles = files.map(f => f.replace(/\\/g, '/'));
+
+  // Get immediate children under currentDir
+  const addedFolders = new Set();
+  const addedFiles = new Set();
+
+  normalisedFiles.forEach(file => {
+    if (currentDir === '') {
+      const parts = file.split('/');
+      if (parts.length === 1) {
+        addedFiles.add(file);
+      } else {
+        addedFolders.add(parts[0]);
+      }
+    } else {
+      const prefix = currentDir + '/';
+      if (file.startsWith(prefix)) {
+        const remaining = file.slice(prefix.length);
+        const parts = remaining.split('/');
+        if (parts.length === 1) {
+          addedFiles.add(file);
+        } else {
+          addedFolders.add(parts[0]);
+        }
+      }
+    }
+  });
+
+  const displayFolders = Array.from(addedFolders).sort();
+  const displayFiles = Array.from(addedFiles).sort();
+
+  // Navigation handlers
+  const handleFolderClick = (folderName) => {
+    const nextDir = currentDir === '' ? folderName : `${currentDir}/${folderName}`;
+    setDirHistory(prev => [...prev, currentDir]);
+    setCurrentDir(nextDir);
+  };
+
+  const handleGoBack = () => {
+    if (dirHistory.length === 0) return;
+    const prevDir = dirHistory[dirHistory.length - 1];
+    setDirHistory(prev => prev.slice(0, -1));
+    setCurrentDir(prevDir);
+  };
+
+  const handleGoUp = () => {
+    if (currentDir === '') return;
+    setDirHistory(prev => [...prev, currentDir]);
+    const parts = currentDir.split('/');
+    if (parts.length === 1) {
+      setCurrentDir('');
+    } else {
+      setCurrentDir(parts.slice(0, -1).join('/'));
+    }
+  };
 
   const activeTab = openFiles.find(t => t.path === activeFilePath);
   const currentContent = activeFilePath !== undefined ? (editContents[activeFilePath] ?? activeTab?.content ?? '') : '';
@@ -229,14 +291,50 @@ export default function EditorPane({ openFiles, activeFilePath, onTabSelect, onT
 
       <div className="editor-files-section">
         <div className="editor-files-header">
-          <Folder size={15} />
-          <span>Workspace Files</span>
+          <div className="header-left">
+            <Folder size={15} />
+            <span className="current-path">{currentDir === '' ? 'Workspace Root' : `Root / ${currentDir}`}</span>
+          </div>
+          <div className="header-right-nav">
+            <button
+              className="folder-nav-btn"
+              disabled={dirHistory.length === 0}
+              onClick={handleGoBack}
+              title="Go back"
+            >
+              <ArrowLeft size={13} />
+              <span>Back</span>
+            </button>
+            <button
+              className="folder-nav-btn"
+              disabled={currentDir === ''}
+              onClick={handleGoUp}
+              title="Go up"
+            >
+              <ArrowUp size={13} />
+              <span>Up</span>
+            </button>
+          </div>
         </div>
         <div className="editor-files-list">
-          {files.map(file => (
+          {/* Folders */}
+          {displayFolders.map(folder => (
+            <div
+              key={folder}
+              className="editor-file-item folder"
+              title={folder}
+              onClick={() => handleFolderClick(folder)}
+            >
+              <FolderOpen size={14} className="folder-icon" />
+              <span className="file-name">{folder}</span>
+            </div>
+          ))}
+
+          {/* Files */}
+          {displayFiles.map(file => (
             <div
               key={file}
-              className="editor-file-item"
+              className="editor-file-item file"
               title={file}
               onClick={() => {
                 if (onFileOpen) {
@@ -252,8 +350,9 @@ export default function EditorPane({ openFiles, activeFilePath, onTabSelect, onT
               <span className="file-name">{file.split('/').pop()}</span>
             </div>
           ))}
-          {files.length === 0 && (
-            <div className="no-files-hint">No files found in workspace</div>
+
+          {displayFolders.length === 0 && displayFiles.length === 0 && (
+            <div className="no-files-hint">No items found in this directory</div>
           )}
         </div>
       </div>
