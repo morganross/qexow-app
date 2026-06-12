@@ -1,7 +1,7 @@
 {
   "name": "qexow-app",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "main": "main.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "@codemirror/lang-python": "^6.2.1",
     "@uiw/react-codemirror": "^4.25.10",
     "cors": "^2.8.6",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "lucide-react": "^0.394.0",
     "playwright": "^1.60.0",
@@ -47,12 +48,24 @@
     },
     "win": {
       "target": [
-        "portable"
+        "nsis"
       ],
       "signtoolOptions": {
         "sign": "./nosign.cjs"
       }
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "morganross",
+        "repo": "qexow-app"
+      }
+    ],
     "files": [
       "dist/**/*",
       "main.js",

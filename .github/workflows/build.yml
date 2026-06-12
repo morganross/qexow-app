@@ -44,16 +44,16 @@ jobs:
             ## Qexow v${{ steps.pkg.outputs.version }}
 
             ### Download
-            Download the portable Windows executable below — no installation required, just run it.
+            Download the Windows Setup installer below to install Qexow natively with clean uninstallation support.
 
             ### What's New
+            - High robustness (9/10): switched to a native NSIS installer that cleanly removes all Qexow Windows Explorer registry keys on uninstall
+            - Automatic update verification and notification on app startup
             - Parallel session background execution: switching chats no longer stops a running Codex agent
-            - Spinning loader in sidebar for background running sessions
-            - Real-time chat history sync when viewing an active background session
-            - Native OS window frame with File, View, and About menus
-            - Windows Explorer context menu integration ("Open in Qexow")
-            - Built-in CodeMirror 6 code editor with syntax highlighting
+            - Real-time sync and status loader in sidebar
           draft: false
           prerelease: false
-          files: dist_electron/Qexow *.exe
+          files: |
+            dist_electron/*.exe
+            dist_electron/latest.yml
           make_latest: true

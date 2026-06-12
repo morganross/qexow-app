@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, Tray, globalShortcut, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, Tray, globalShortcut, nativeImage, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { spawn, exec } from 'child_process';
@@ -8,8 +8,53 @@ import os from 'os';
 import net from 'net';
 import { promisify } from 'util';
 import { startServer } from './server.js';
+import pkgUpdater from 'electron-updater';
+const { autoUpdater } = pkgUpdater;
 
 const execAsync = promisify(exec);
+
+// Configure Auto Updater
+function setupAutoUpdater() {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Electron Main] Skipping auto updater check in development.');
+    return;
+  }
+  
+  autoUpdater.logger = console;
+  
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AutoUpdater] Checking for update...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AutoUpdater] Update available:', info.version);
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('[AutoUpdater] Update not available.');
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[AutoUpdater] Error in auto-updater:', err);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdater] Update downloaded:', info.version);
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Update Ready',
+      message: `A new version of Qexow (${info.version}) has been downloaded and is ready to install.`,
+      detail: 'The application will restart to apply the update.',
+      buttons: ['Restart Now', 'Later']
+    }).then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -327,6 +372,7 @@ if (!gotTheLock) {
     createWindow(port, state);
     await createTray();
     registerGlobalShortcut();
+    setupAutoUpdater();
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
