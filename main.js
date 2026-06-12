@@ -11,7 +11,7 @@ import { startServer } from './server.js';
 import pkgUpdater from 'electron-updater';
 const { autoUpdater } = pkgUpdater;
 
-const execAsync = promisify(exec);
+const execAsync = (cmd) => promisify(exec)(cmd, { windowsHide: true });
 
 // Configure Auto Updater
 function setupAutoUpdater() {
@@ -400,6 +400,7 @@ ipcMain.on('codex-exec', (event, { prompt, sessionUuid }) => {
 
   activeCodexProcess = spawn('codex', ['exec', prompt, '--session', sessionUuid, '--json'], {
     shell: true,
+    windowsHide: true
   });
 
   const rl = readline.createInterface({

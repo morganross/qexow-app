@@ -142,7 +142,7 @@ app.get('/api/auth/status', async (req, res) => {
 // API: Get Codex Quota
 app.get('/api/quota', (req, res) => {
   const scriptPath = path.join(__dirname, 'get_quota.py');
-  const proc = spawn('python', [scriptPath], { shell: false });
+  const proc = spawn('python', [scriptPath], { shell: false, windowsHide: true });
   let stdout = '';
   let stderr = '';
 
@@ -207,7 +207,7 @@ app.get('/api/quota', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const codexPath = getCodexPath();
   console.log(`Spawning ${codexPath} login --device-auth...`);
-  const loginProc = spawn(codexPath, ['login', '--device-auth'], { shell: false });
+  const loginProc = spawn(codexPath, ['login', '--device-auth'], { shell: false, windowsHide: true });
   
   let output = '';
   let responded = false;
@@ -250,7 +250,7 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   const codexPath = getCodexPath();
   console.log(`Spawning ${codexPath} logout...`);
-  const logoutProc = spawn(codexPath, ['logout'], { shell: false });
+  const logoutProc = spawn(codexPath, ['logout'], { shell: false, windowsHide: true });
   
   logoutProc.on('close', (code) => {
     res.json({ success: code === 0 });
@@ -473,7 +473,8 @@ app.post('/api/workspace/build', (req, res) => {
   console.log('Triggering background build...');
   const buildProc = spawn('npm', ['run', 'build'], {
     shell: true,
-    cwd: activeWorkspace
+    cwd: activeWorkspace,
+    windowsHide: true
   });
 
   buildProc.on('close', (code) => {
@@ -639,7 +640,7 @@ app.get('/api/models', (req, res) => {
 
   const codexPath = getCodexPath();
   console.log(`Spawning ${codexPath} debug models...`);
-  const proc = spawn(codexPath, ['debug', 'models'], { shell: false });
+  const proc = spawn(codexPath, ['debug', 'models'], { shell: false, windowsHide: true });
   let stdout = '';
   let stderr = '';
 
@@ -732,7 +733,8 @@ app.get('/api/exec', (req, res) => {
   const codexProcess = spawn(codexPath, args, {
     shell: false,
     stdio: ['pipe', 'pipe', 'pipe'],
-    cwd: activeWorkspace
+    cwd: activeWorkspace,
+    windowsHide: true
   });
   // Immediately close stdin with EOF so Codex stops waiting for extra context input
   // and proceeds to process the prompt. Using 'ignore' causes Codex to exit code 1.
